@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flight 11 - Vocabulario + Dictado</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #f0f4f8; color: #2d3748; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 15px; }
+        header { text-align: center; margin-bottom: 15px; width: 100%; }
+        h1 { color: #1a365d; font-size: 1.5rem; margin-bottom: 4px; }
+        p.subtitle { color: #4a5568; font-size: 0.9rem; font-weight: 500; }
+        
+        .mode-selector { display: flex; gap: 5px; margin-bottom: 15px; width: 100%; max-width: 750px; justify-content: center; flex-wrap: wrap; }
+        .mode-btn { flex: 1; background-color: #e2e8f0; color: #4a5568; border: 2px solid #cbd5e0; padding: 8px 2px; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 0.65rem; transition: all 0.2s ease; text-align: center; min-width: 60px; }
+        .mode-btn.active { background-color: #2b6cb0; color: white; border-color: #2b6cb0; }
+        
+        /* === SECCIÓN: DICTADO === */
+        .dictation-container { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 650px; margin: 0 auto; }
+        .dictation-card { background: white; border-radius: 20px; padding: 30px 25px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 100%; }
+        .dict-progress { font-size: 0.85rem; color: #718096; font-weight: 600; margin-bottom: 8px; text-align: center; }
+        .dict-score { font-size: 0.85rem; color: #38a169; font-weight: 700; margin-bottom: 14px; text-align: center; }
+        .dict-audio-btn { width: 90px; height: 90px; border-radius: 50%; background: #2b6cb0; color: white; border: none; font-size: 2.5rem; cursor: pointer; box-shadow: 0 4px 16px rgba(43,108,176,0.4); transition: all 0.2s ease; margin: 0 auto 18px; display: block; }
+        .dict-audio-btn:hover { transform: scale(1.05); background: #1a365d; }
+        .dict-audio-btn.pulsing { animation: pulse 1.2s infinite; }
+        .dict-input { width: 100%; padding: 14px; border: 3px solid #e2e8f0; border-radius: 12px; font-size: 1rem; font-family: inherit; resize: vertical; min-height: 90px; outline: none; transition: all 0.2s ease; line-height: 1.5; }
+        .dict-input:focus { border-color: #2b6cb0; }
+        .dict-input.correct { border-color: #38a169; background: #f0fff4; }
+        .dict-input.wrong { border-color: #e53e3e; background: #fff5f5; }
+        .dict-feedback { margin-top: 14px; font-size: 1rem; font-weight: 700; min-height: 24px; text-align: center; }
+        .dict-feedback.ok { color: #38a169; }
+        .dict-feedback.warn { color: #f5a623; }
+        .dict-feedback.bad { color: #e53e3e; }
+        .dict-correct-answer { margin-top: 12px; padding: 12px; background: #eef4fb; border-left: 4px solid #3182ce; border-radius: 8px; font-size: 0.95rem; display: none; }
+        .dict-correct-answer.show { display: block; }
+        .dict-correct-answer strong { color: #1a365d; }
+        .dict-controls { display: flex; gap: 12px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+        .dict-btn { padding: 12px 24px; border: none; border-radius: 50px; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: all 0.2s ease; }
+        .dict-btn-check { background: #2b6cb0; color: white; }
+        .dict-btn-check:hover { background: #1a365d; }
+        .dict-btn-next { background: #38a169; color: white; display: none; }
+        .dict-btn-next.show { display: inline-block; }
+        .dict-btn-next:hover { background: #276749; }
+        .dict-btn-skip { background: #e2e8f0; color: #4a5568; }
+        .dict-btn-skip:hover { background: #cbd5e0; }
+        .dict-end { text-align: center; padding: 20px; }
+        .dict-end h3 { color: #2b6cb0; margin-bottom: 12px; }
+        .dict-end .dict-final-score { font-size: 2.5rem; font-weight: 900; color: #38a169; margin: 12px 0; }
+
+        /* === JUEGO / PRÁCTICA === */
+        .game-view { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 600px; }
+        .stats { display: flex; justify-content: space-between; width: 100%; font-size: 1rem; font-weight: bold; color: #2b6cb0; margin-bottom: 15px; background: white; padding: 10px 16px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .audio-btn { background-color: #3182ce; color: white; border: none; padding: 14px 24px; font-size: 1.1rem; font-weight: bold; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 10px rgba(49,130,206,0.3); transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 15px; width: 100%; max-width: 300px; }
+        .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: 100%; }
+        .card { background-color: white; border-radius: 12px; padding: 14px; display: flex; justify-content: center; align-items: center; text-align: center; font-size: 0.95rem; font-weight: 600; min-height: 80px; box-shadow: 0 3px 6px rgba(0,0,0,0.06); cursor: pointer; border: 3px solid transparent; transition: all 0.2s ease; color: #2d3748; }
+        .card.correct { border-color: #38a169; background-color: #f0fff4; color: #22543d; animation: pulseCard 0.4s; }
+        .card.wrong { border-color: #e53e3e; background-color: #fff5f5; color: #742a2a; animation: shake 0.4s; }
+        @keyframes pulseCard { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        .feedback { margin-top: 15px; font-size: 1.1rem; font-weight: bold; min-height: 30px; text-align: center; }
+        .feedback.correct-text { color: #276749; }
+        .feedback.wrong-text { color: #9b2c2c; }
+        .next-btn { margin-top: 12px; background-color: #38a169; color: white; border: none; padding: 12px 28px; font-size: 1rem; font-weight: bold; border-radius: 50px; cursor: pointer; display: none; box-shadow: 0 4px 8px rgba(56,161,105,0.3); }
+        
+        /* === GLOSARIO === */
+        .study-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; max-width: 650px; width: 100%; }
+        .study-card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #3182ce; }
+        .study-info h3 { color: #2b6cb0; font-size: 1.1rem; margin-bottom: 2px; }
+        .study-info p.trans { font-weight: bold; color: #2d3748; font-size: 0.95rem; }
+        .study-info p.def { color: #718096; font-size: 0.8rem; margin-top: 4px; }
+        .listen-icon-btn { background: #ebf8ff; color: #3182ce; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-left: 10px; }
+
+        /* === FINAL SCREEN === */
+        .end-screen { display: none; flex-direction: column; align-items: center; background: white; padding: 30px 20px; border-radius: 16px; box-shadow: 0 6px 16px rgba(0,0,0,0.1); text-align: center; max-width: 450px; width: 100%; margin-top: 20px; }
+        .end-screen h2 { color: #2b6cb0; margin-bottom: 10px; }
+        .end-screen p { font-size: 1.1rem; margin-bottom: 20px; }
+        .restart-btn { background-color: #3182ce; color: white; border: none; padding: 14px 28px; font-size: 1rem; font-weight: bold; border-radius: 50px; cursor: pointer; }
+
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(43,108,176,0.5); } 70% { box-shadow: 0 0 0 20px rgba(43,108,176,0); } 100% { box-shadow: 0 0 0 0 rgba(43,108,176,0); } }
+        @keyframes shake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-8px); } 40%,80% { transform: translateX(8px); } }
+        
+        @media (max-width: 480px) { 
+            h1 { font-size:1.2rem; } 
+            .grid-container { grid-template-columns:1fr; } 
+            .card { min-height:65px; font-size:0.9rem; } 
+            .mode-btn { font-size:0.58rem; padding:6px 1px; } 
+            .dict-audio-btn { width:75px; height:75px; font-size:2rem; } 
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Flight 11: Vocabulario</h1>
+    <p class="subtitle">Simple Past &amp; Aviation Vocabulary</p>
+</header>
+
+<div class="mode-selector">
+    <button class="mode-btn" onclick="switchTab('dictation')">📝 Dictado</button>
+    <button class="mode-btn" onclick="switchTab('es')">1. Español</button>
+    <button class="mode-btn" onclick="switchTab('def')">2. Definición</button>
+    <button class="mode-btn" onclick="switchTab('en')">3. Inglés</button>
+    <button class="mode-btn active" onclick="switchTab('study')">📘 Glosario</button>
+</div>
+
+<!-- ===== SECCIÓN DICTADO ===== -->
+<div class="dictation-container" id="dictation-view">
+    <div class="dictation-card" id="dictationCard"></div>
+</div>
+
+<!-- ===== SECCIÓN JUEGO ===== -->
+<div class="game-view" id="game-view">
+    <div class="stats">
+        <span>Progreso: <span id="question-count">1</span>/<span id="total-count">0</span></span>
+        <span>Puntos: <span id="score">0</span></span>
+    </div>
+    <button class="audio-btn" onclick="playCurrentWord()">🔊 Escuchar palabra</button>
+    <div class="grid-container" id="grid"></div>
+    <div class="feedback" id="feedback"></div>
+    <button class="next-btn" id="next-btn" onclick="nextTurn()">Siguiente ➔</button>
+</div>
+
+<!-- ===== SECCIÓN GLOSARIO ===== -->
+<div class="study-container" id="study-view" style="display:none;"></div>
+
+<!-- ===== PANTALLA FINAL ===== -->
+<div class="end-screen" id="end-screen">
+    <h2>🎉 ¡Repaso Completado!</h2>
+    <p>Has practicado el vocabulario del Flight 11.<br>Tu puntuación final es: <strong id="final-score">0</strong> puntos.</p>
+    <button class="restart-btn" onclick="switchTab('es')">Repetir Modo Práctica ✈️</button>
+</div>
+
+<script>
+// ============================================================
+// VOCABULARIO FLIGHT 11 (Extraído del HTML original)
+// ============================================================
+const vocabulary = [
+    { word: "Inspect", translation: "Inspeccionar", def: "To examine something carefully." },
+    { word: "Divert", translation: "Desviar", def: "To change the route of an aircraft." },
+    { word: "Authorize", translation: "Autorizar", def: "To give official permission." },
+    { word: "Calibrate", translation: "Calibrar", def: "To adjust an instrument for accuracy." },
+    { word: "Clear", translation: "Autorizar / Despejar", def: "To give permission (e.g., to taxi, land, take off)." },
+    { word: "Hold", translation: "Mantener / Esperar", def: "To keep an aircraft waiting in a specific area." },
+    { word: "Fly", translation: "Volar", def: "To operate an aircraft in the air." },
+    { word: "Rise", translation: "Elevarse / Ascender", def: "To move upwards." },
+    { word: "Speak", translation: "Hablar", def: "To communicate verbally." },
+    { word: "Set", translation: "Establecer / Ajustar", def: "To put something in a specific position or state." },
+    { word: "Taxiway", translation: "Pista de rodaje", def: "A path for aircraft to move on the ground." },
+    { word: "Approach", translation: "Aproximación", def: "The phase of flight when an aircraft is descending to land." },
+    { word: "Holding Pattern", translation: "Patrón de espera", def: "A predetermined flight path to keep aircraft waiting." },
+    { word: "Transponder", translation: "Transpondedor", def: "A device that sends signals to radar." },
+    { word: "Altimeter", translation: "Altímetro", def: "An instrument that measures altitude." },
+    { word: "Crosswind", translation: "Viento cruzado", def: "Wind blowing perpendicular to the runway." },
+    { word: "Go-Around", translation: "Frustrada", def: "Aborting a landing approach to try again." },
+    { word: "Fuel Jettison", translation: "Descarga de combustible", def: "Dumping fuel to reduce weight." },
+    { word: "Cabin Altitude", translation: "Altitud de cabina", def: "The pressure altitude inside the cabin." },
+    { word: "Ground Proximity", translation: "Proximidad al terreno", def: "An alert when an aircraft is dangerously close to the ground." }
+];
+
+// ============================================================
+// FRASES PARA EL DICTADO (Extraídas del HTML original)
+// ============================================================
+const dictationPhrases = [
+    "Engineers inspected the hydraulic seals prior to departure.",
+    "Heavy fog forced the flight crew to divert to an alternate airport.",
+    "Radar control authorized a direct climb to FL310.",
+    "Mechanics calibrated the altimeter instruments.",
+    "Ground control cleared Flight 11 to taxi to Runway 22 Left.",
+    "ATC held Flight 11 over waypoint ALPHA due to airport congestion.",
+    "The crew flew through severe crosswind during final approach.",
+    "The cabin pressure rose suddenly after leveling off.",
+    "The captain spoke directly with apron operations.",
+    "The first officer set the transponder code to 4201."
+];
+
+// ============================================================
+// VARIABLES GLOBALES
+// ============================================================
+let currentTab = 'study';
+let remainingWords = [];
+let currentTarget = null;
+let score = 0;
+let currentIndex = 0;
+let isAnswered = false;
+
+let dictIndex = 0;
+let dictScore = 0;
+let dictAnswered = false;
+
+// ============================================================
+// AUDIO Y UTILIDADES
+// ============================================================
+function playSound(text, rate = 0.8) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = rate;
+    window.speechSynthesis.speak(utterance);
+}
+
+function playBeep(type) {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (ctx.state === 'suspended') ctx.resume();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        if (type === 'correct') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+            osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+            osc.start(); osc.stop(ctx.currentTime + 0.3);
+        } else {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, ctx.currentTime);
+            osc.frequency.setValueAtTime(150, ctx.currentTime + 0.15);
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+            osc.start(); osc.stop(ctx.currentTime + 0.3);
+        }
+    } catch(e) {}
+}
+
+function shuffle(array) { return [...array].sort(() => 0.5 - Math.random()); }
+
+function normalizeText(text) {
+    return text.toLowerCase().replace(/[.,!?;:'"]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+// ============================================================
+// DICTADO
+// ============================================================
+function renderDictation() {
+    const container = document.getElementById('dictation-view');
+    container.style.display = 'flex';
+    const card = document.getElementById('dictationCard');
+    
+    if (dictIndex >= dictationPhrases.length) {
+        card.innerHTML = `
+            <div class="dict-end">
+                <h3>🎉 ¡Dictado completado!</h3>
+                <div class="dict-final-score">${dictScore} / ${dictationPhrases.length}</div>
+                <p style="color:#718096;margin-bottom:18px;">Aciertos totales</p>
+                <button class="dict-btn dict-btn-check" onclick="resetDictation()">🔄 Repetir Dictado</button>
+            </div>
+        `;
+        return;
+    }
+    
+    dictAnswered = false;
+    card.innerHTML = `
+        <div class="dict-progress">Frase ${dictIndex + 1} / ${dictationPhrases.length}</div>
+        <div class="dict-score">✅ Aciertos: ${dictScore}</div>
+        <button class="dict-audio-btn pulsing" id="dictAudioBtn">🔊</button>
+        <p style="text-align:center;color:#718096;font-size:0.85rem;margin-bottom:14px;">Escuchá la frase técnica y escribila abajo</p>
+        <textarea class="dict-input" id="dictInput" placeholder="Escribí lo que escuchaste..."></textarea>
+        <div class="dict-feedback" id="dictFeedback"></div>
+        <div class="dict-correct-answer" id="dictCorrectAnswer"></div>
+        <div class="dict-controls">
+            <button class="dict-btn dict-btn-skip" id="dictSkipBtn">⏭️ Saltar</button>
+            <button class="dict-btn dict-btn-check" id="dictCheckBtn">✓ Verificar</button>
+            <button class="dict-btn dict-btn-next" id="dictNextBtn">Siguiente →</button>
+        </div>
+    `;
+    
+    setTimeout(() => playSound(dictationPhrases[dictIndex], 0.75), 500);
+    document.getElementById('dictAudioBtn').classList.add('pulsing');
+    
+    document.getElementById('dictAudioBtn').onclick = function() {
+        playSound(dictationPhrases[dictIndex], 0.75);
+        this.classList.remove('pulsing');
+        setTimeout(() => this.classList.add('pulsing'), 300);
+    };
+    
+    document.getElementById('dictCheckBtn').onclick = checkDictation;
+    document.getElementById('dictNextBtn').onclick = nextDictation;
+    document.getElementById('dictSkipBtn').onclick = nextDictation;
+    
+    document.getElementById('dictInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            checkDictation();
+        }
+    });
+}
+
+function checkDictation() {
+    if (dictAnswered) return;
+    const input = document.getElementById('dictInput').value;
+    const feedback = document.getElementById('dictFeedback');
+    const correctAnswer = document.getElementById('dictCorrectAnswer');
+    const phrase = dictationPhrases[dictIndex];
+    
+    if (!input.trim()) {
+        feedback.textContent = '⚠️ Escribí algo primero';
+        feedback.className = 'dict-feedback warn';
+        return;
+    }
+    
+    const inputNorm = normalizeText(input);
+    const targetNorm = normalizeText(phrase);
+    const inputWords = inputNorm.split(/\s+/);
+    const targetWords = targetNorm.split(/\s+/);
+    
+    let correctWords = 0;
+    const maxLen = Math.max(inputWords.length, targetWords.length);
+    for (let i = 0; i < Math.min(inputWords.length, targetWords.length); i++) {
+        if (inputWords[i] === targetWords[i]) correctWords++;
+    }
+    const similarity = correctWords / maxLen;
+    
+    dictAnswered = true;
+    const inputEl = document.getElementById('dictInput');
+    const nextBtn = document.getElementById('dictNextBtn');
+    const checkBtn = document.getElementById('dictCheckBtn');
+    
+    if (similarity >= 0.85) {
+        dictScore++;
+        inputEl.classList.add('correct');
+        feedback.textContent = '✅ ¡Perfecto! Frase técnica correcta.';
+        feedback.className = 'dict-feedback ok';
+        playBeep('correct');
+    } else if (similarity >= 0.55) {
+        inputEl.classList.add('wrong');
+        feedback.textContent = `⚠️ Casi. Similitud: ${Math.round(similarity * 100)}%`;
+        feedback.className = 'dict-feedback warn';
+        playBeep('wrong');
+    } else {
+        inputEl.classList.add('wrong');
+        feedback.textContent = `❌ Incorrecto. Similitud: ${Math.round(similarity * 100)}%`;
+        feedback.className = 'dict-feedback bad';
+        playBeep('wrong');
+    }
+    
+    correctAnswer.innerHTML = `<strong>✅ Frase correcta:</strong><br>${phrase}`;
+    correctAnswer.classList.add('show');
+    nextBtn.classList.add('show');
+    checkBtn.disabled = true;
+    inputEl.disabled = true;
+}
+
+function nextDictation() {
+    dictIndex++;
+    renderDictation();
+}
+
+function resetDictation() {
+    dictIndex = 0;
+    dictScore = 0;
+    renderDictation();
+}
+
+// ============================================================
+// GLOSARIO
+// ============================================================
+function renderStudyView() {
+    const container = document.getElementById('study-view');
+    container.innerHTML = '';
+    vocabulary.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'study-card';
+        card.innerHTML = `
+            <div class="study-info">
+                <h3>${item.word}</h3>
+                <p class="trans">${item.translation}</p>
+                <p class="def">${item.def}</p>
+            </div>
+            <button class="listen-icon-btn" onclick="playSound('${item.word}')">🔊</button>
+        `;
+        container.appendChild(card);
+    });
+}
+
+// ============================================================
+// JUEGO (PRÁCTICA)
+// ============================================================
+function switchTab(tab) {
+    currentTab = tab;
+    const buttons = document.querySelectorAll('.mode-btn');
+    buttons.forEach(btn => btn.classList.remove('active'));
+    
+    document.getElementById('study-view').style.display = 'none';
+    document.getElementById('dictation-view').style.display = 'none';
+    document.getElementById('game-view').style.display = 'none';
+    document.getElementById('end-screen').style.display = 'none';
+    
+    if (tab === 'study') {
+        buttons[4].classList.add('active');
+        document.getElementById('study-view').style.display = 'grid';
+    } else if (tab === 'dictation') {
+        buttons[0].classList.add('active');
+        renderDictation();
+    } else {
+        if (tab === 'es') buttons[1].classList.add('active');
+        if (tab === 'def') buttons[2].classList.add('active');
+        if (tab === 'en') buttons[3].classList.add('active');
+        document.getElementById('game-view').style.display = 'flex';
+        resetGame();
+    }
+}
+
+function playCurrentWord() { if (currentTarget) playSound(currentTarget.word); }
+
+function getCardText(item) {
+    if (currentTab === 'es') return item.translation;
+    if (currentTab === 'def') return item.def;
+    if (currentTab === 'en') return item.word;
+}
+
+function setupTurn() {
+    if (currentIndex >= remainingWords.length) { showEndScreen(); return; }
+    isAnswered = false;
+    document.getElementById('question-count').innerText = currentIndex + 1;
+    document.getElementById('feedback').innerText = '';
+    document.getElementById('feedback').className = 'feedback';
+    document.getElementById('next-btn').style.display = 'none';
+    currentTarget = remainingWords[currentIndex];
+    
+    const distractors = vocabulary.filter(v => v.word !== currentTarget.word);
+    const chosenDistractors = shuffle(distractors).slice(0, 3);
+    const options = shuffle([currentTarget, ...chosenDistractors]);
+    
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    options.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerText = getCardText(item);
+        card.onclick = () => checkAnswer(item, card);
+        grid.appendChild(card);
+    });
+    setTimeout(playCurrentWord, 250);
+}
+
+function checkAnswer(selected, cardElement) {
+    if (isAnswered) return;
+    if (selected.word === currentTarget.word) {
+        isAnswered = true;
+        playBeep('correct');
+        score += 10;
+        document.getElementById('score').innerText = score;
+        cardElement.classList.add('correct');
+        document.getElementById('feedback').innerText = `¡Excelente! ${currentTarget.word} = ${currentTarget.translation}`;
+        document.getElementById('feedback').className = 'feedback correct-text';
+        document.getElementById('next-btn').style.display = 'inline-block';
+    } else {
+        playBeep('wrong');
+        cardElement.classList.add('wrong');
+        document.getElementById('feedback').innerText = '¡Inténtalo de nuevo!';
+        document.getElementById('feedback').className = 'feedback wrong-text';
+        setTimeout(() => cardElement.classList.remove('wrong'), 400);
+    }
+}
+
+function nextTurn() { currentIndex++; setupTurn(); }
+
+function showEndScreen() {
+    document.getElementById('game-view').style.display = 'none';
+    document.getElementById('final-score').innerText = score;
+    document.getElementById('end-screen').style.display = 'flex';
+}
+
+function resetGame() {
+    score = 0; currentIndex = 0;
+    remainingWords = shuffle(vocabulary);
+    document.getElementById('total-count').innerText = remainingWords.length;
+    document.getElementById('score').innerText = score;
+    setupTurn();
+}
+
+// ============================================================
+// INICIALIZACIÓN
+// ============================================================
+window.onload = () => {
+    renderStudyView();
+};
+</script>
+</body>
+</html>
